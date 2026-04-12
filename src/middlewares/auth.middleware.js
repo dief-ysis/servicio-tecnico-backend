@@ -13,7 +13,10 @@ const verificarToken = (req, res, next) => {
     req.usuario = payload
     next()
   } catch (err) {
-    return res.status(403).json({ error: 'Token inválido o expirado' })
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Sesión expirada' })
+    }
+    return res.status(401).json({ error: 'Token inválido' })
   }
 }
 
