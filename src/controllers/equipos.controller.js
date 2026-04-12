@@ -19,7 +19,7 @@ const registrarCambio = async (equipoId, usuarioId, campo, anterior, nuevo) => {
 }
 
 const listar = async (req, res) => {
-  const { estado, cliente_id, buscar } = req.query
+  const { estado, cliente_id, buscar, fecha_desde, fecha_hasta } = req.query
   try {
     let conditions = []
     let params = []
@@ -37,6 +37,14 @@ const listar = async (req, res) => {
       conditions.push(`(c.nombre ILIKE $${i} OR e.numero_ingreso ILIKE $${i} OR e.marca ILIKE $${i})`)
       params.push(`%${buscar}%`)
       i++
+    }
+    if (fecha_desde) {
+      conditions.push(`e.fecha_ingreso >= $${i++}`)
+      params.push(fecha_desde)
+    }
+    if (fecha_hasta) {
+      conditions.push(`e.fecha_ingreso <= $${i++}`)
+      params.push(`${fecha_hasta}T23:59:59`)
     }
 
     const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
