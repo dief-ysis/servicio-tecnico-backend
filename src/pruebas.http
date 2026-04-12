@@ -1,0 +1,87 @@
+### Health check
+GET http://localhost:3000/api/health
+
+### Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@taller.com",
+  "password": "password123"
+}
+
+### Mi usuario (reemplaza eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I con el que retorne el login)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+### Crear cliente
+POST http://localhost:3000/api/clientes
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+{
+  "nombre": "Juan Pérez",
+  "telefono": "912345678",
+  "email": "juan@email.com"
+}
+
+### Listar clientes
+GET http://localhost:3000/api/clientes
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+### Crear equipo
+POST http://localhost:3000/api/equipos
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+{
+  "cliente_id": 1,
+  "tipo_equipo": "notebook",
+  "marca": "HP",
+  "modelo": "Pavilion 15",
+  "falla_reportada": "No enciende",
+  "accesorios": "Cargador"
+}
+
+### Listar equipos
+GET http://localhost:3000/api/equipos
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+### Cambiar estado
+PATCH http://localhost:3000/api/equipos/1/estado
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+{
+  "estado": "en_reparacion"
+}
+
+### Ver historial de equipo
+GET http://localhost:3000/api/equipos/1/historial
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+### Crear usuario recepcionista
+POST http://localhost:3000/api/usuarios
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+{
+  "nombre": "María González",
+  "email": "maria@taller.com",
+  "password": "recep1234",
+  "rol": "recepcionista"
+}
+
+### Listar usuarios
+GET http://localhost:3000/api/usuarios
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+### Cambiar mi contraseña
+PATCH http://localhost:3000/api/usuarios/1/password
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlIjoiQWRtaW4iLCJyb2wiOiJ0ZWNuaWNvIiwiaWF0IjoxNzc1ODAyMDM2LCJleHAiOjE3NzU4MzA4MzZ9.LBC0Iz8EsQ3ETow0wpMzPXEBwz9QPYNsBtk_i51uH_I
+
+{
+  "password_actual": "password123",
+  "password_nuevo": "nueva_clave_segura"
+}
