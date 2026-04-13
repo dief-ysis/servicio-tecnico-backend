@@ -1,6 +1,12 @@
 const { Pool } = require('pg')
 require('dotenv').config()
 
+if (process.env.NODE_ENV === 'test') {
+  require('dotenv').config({ path: '.env.test', override: true })
+} else {
+  require('dotenv').config()
+}
+
 const pool = new Pool({
   host:     process.env.DB_HOST,
   port:     process.env.DB_PORT,

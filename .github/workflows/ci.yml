@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: servicio_tecnico_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Crear tablas de test
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d servicio_tecnico_test -c "
+          CREATE TYPE estado_equipo AS ENUM ('por_reparar','en_reparacion','reparado','irreparable','entregado');
+          CREATE TYPE rol_usuario AS ENUM ('recepcionista','tecnico');
+          CREATE TABLE clientes (id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL, telefono VARCHAR(20), email VARCHAR(100), activo BOOLEAN DEFAULT TRUE, eliminado_en TIMESTAMP, creado_en TIMESTAMP DEFAULT NOW());
+          CREATE TABLE usuarios (id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, rol rol_usuario NOT NULL DEFAULT 'recepcionista', activo BOOLEAN DEFAULT TRUE, creado_en TIMESTAMP DEFAULT NOW());
+          CREATE TABLE equipos (id SERIAL PRIMARY KEY, numero_ingreso VARCHAR(20) UNIQUE NOT NULL, cliente_id INTEGER NOT NULL REFERENCES clientes(id), tipo_equipo VARCHAR(50), marca VARCHAR(50), modelo VARCHAR(50), falla_reportada TEXT, diagnostico TEXT, accesorios TEXT, observaciones TEXT, password_pin VARCHAR(50), notas_tecnico TEXT, costo_reparacion NUMERIC(10,2), estado_actual estado_equipo NOT NULL DEFAULT 'por_reparar', fecha_ingreso TIMESTAMP DEFAULT NOW(), fecha_entrega TIMESTAMP);
+          CREATE TABLE historial_cambios (id SERIAL PRIMARY KEY, equipo_id INTEGER NOT NULL REFERENCES equipos(id), usuario_id INTEGER NOT NULL REFERENCES usuarios(id), campo_modificado VARCHAR(50) NOT NULL, valor_anterior TEXT, valor_nuevo TEXT, fecha_cambio TIMESTAMP DEFAULT NOW());
+          CREATE TABLE login_logs (id SERIAL PRIMARY KEY, email VARCHAR(100), ip VARCHAR(45), exitoso BOOLEAN NOT NULL, detalle VARCHAR(100), creado_en TIMESTAMP DEFAULT NOW());
+          "
+
+      - name: Insertar usuario de test
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d servicio_tecnico_test -c "
+          INSERT INTO usuarios (nombre, email, password_hash, rol)
+          VALUES ('Admin Test', 'admin@taller.com', '\$2a\$10\$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lkii', 'tecnico');
+          "
+
+      - name: Correr tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: servicio_tecnico_test
+          JWT_SECRET: test_secret_key
+          JWT_EXPIRES_IN: 1h
+          NODE_ENV: test
+          TEST_PASSWORD: password123
+        run: npm test
