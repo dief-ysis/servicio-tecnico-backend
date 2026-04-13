@@ -13,18 +13,28 @@ const swaggerSpec = require('./swagger')
 
 const app = express()
 
+const corsOptions = {
+  origin: (origin, callback) => {
+    const permitidos = [
+      'https://servicio-tecnico-frontend.vercel.app',
+      'http://localhost:5173'
+    ]
+    if (!origin || permitidos.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true)
+    } else {
+      callback(new Error('No permitido por CORS'))
+    }
+  },
+  credentials: true
+}
+
 app.set('trust proxy', 1)
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }))
 
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.FRONTEND_URL
-    : 'http://localhost:5173',
-  credentials: true
-}))
+app.use(cors(corsOptions))
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { background-color: #000 } .swagger-ui .topbar-wrapper img { display: none } .swagger-ui .topbar-wrapper::before { content: "LIGHT SOLUTION — API"; color: #ffcd0d; font-weight: 900; font-size: 14px; letter-spacing: 0.08em; }',
