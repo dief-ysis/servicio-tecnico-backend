@@ -87,23 +87,25 @@ router.patch('/:id/estado', requireRol('tecnico'), cambiarEstado)
  */
 router.get('/estadisticas', verificarToken, async (req, res) => {
   const { periodo = 'mes' } = req.query
-  const intervalos = { semana: '7 days', mes: '30 days', año: '365 days' }
-  const intervalo = intervalos[periodo] ?? '30 days'
+  const intervalos = { semana: 7, mes: 30, año: 365 }
+  const dias = intervalos[periodo] ?? 30
 
   try {
     const totales = await pool.query(
       `SELECT estado_actual, COUNT(*) as total
        FROM equipos
-       WHERE fecha_ingreso >= NOW() - INTERVAL '${intervalo}'
-       GROUP BY estado_actual`
+       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+       GROUP BY estado_actual`,
+      [dias]
     )
 
     const porDia = await pool.query(
       `SELECT DATE(fecha_ingreso) as fecha, COUNT(*) as ingresos
        FROM equipos
-       WHERE fecha_ingreso >= NOW() - INTERVAL '${intervalo}'
+       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
        GROUP BY DATE(fecha_ingreso)
-       ORDER BY fecha ASC`
+       ORDER BY fecha ASC`,
+      [dias]
     )
 
     const costos = await pool.query(
@@ -112,8 +114,9 @@ router.get('/estadisticas', verificarToken, async (req, res) => {
         SUM(costo_reparacion) as total_facturado,
         AVG(costo_reparacion) as promedio
        FROM equipos
-       WHERE fecha_ingreso >= NOW() - INTERVAL '${intervalo}'
-       AND estado_actual IN ('reparado', 'entregado')`
+       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+       AND estado_actual IN ('reparado', 'entregado')`,
+      [dias]
     )
 
     res.json({
@@ -129,7 +132,7 @@ router.get('/estadisticas', verificarToken, async (req, res) => {
 })
 
 router.get('/sin-movimiento', verificarToken, async (req, res) => {
-  const { dias = 7 } = req.query
+  const dias = parseInt(req.query.dias ?? 7)
   try {
     const result = await pool.query(
       `SELECT e.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
@@ -139,9 +142,10 @@ router.get('/sin-movimiento', verificarToken, async (req, res) => {
        LEFT JOIN historial_cambios h ON h.equipo_id = e.id
        WHERE e.estado_actual IN ('por_reparar', 'en_reparacion')
        GROUP BY e.id, c.nombre, c.telefono
-       HAVING MAX(h.fecha_cambio) < NOW() - INTERVAL '${parseInt(dias)} days'
+       HAVING MAX(h.fecha_cambio) < NOW() - ($1 || ' days')::INTERVAL
           OR MAX(h.fecha_cambio) IS NULL
        ORDER BY ultimo_cambio ASC NULLS FIRST`,
+      [dias]
     )
     res.json(result.rows)
   } catch (err) {
