@@ -3,7 +3,7 @@ const pool = require('../db/connection')
 const listar = async (req, res) => {
   const { buscar } = req.query
   try {
-    let query = 'SELECT * FROM clientes'
+    let query = 'SELECT * FROM clientes WHERE activo = TRUE'
     let params = []
 
     if (buscar) {
