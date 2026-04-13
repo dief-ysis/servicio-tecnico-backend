@@ -7,7 +7,7 @@ const listar = async (req, res) => {
     let params = []
 
     if (buscar) {
-      query += ' WHERE nombre ILIKE $1 OR telefono ILIKE $1'
+      query += ' AND (nombre ILIKE $1 OR telefono ILIKE $1)'
       params = [`%${buscar}%`]
     }
 
