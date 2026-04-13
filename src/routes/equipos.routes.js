@@ -1,5 +1,5 @@
 const pool = require('../db/connection')
-const upload = require('../middlewares/upload.middleware')
+const { upload, subirACloudinary } = require('../middlewares/upload.middleware')
 const router = require('express').Router()
 const { listar, obtener, crear, actualizar, cambiarEstado, historial } = require('../controllers/equipos.controller')
 const { verificarToken, requireRol } = require('../middlewares/auth.middleware')
@@ -155,18 +155,20 @@ router.post('/:id/foto', verificarToken, requireRol('tecnico', 'recepcionista'),
   try {
     if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' })
 
+    const resultado = await subirACloudinary(req.file.buffer, req.file.mimetype)
+
     await pool.query(
       'UPDATE equipos SET foto_url = $1 WHERE id = $2',
-      [req.file.path, id]
+      [resultado.secure_url, id]
     )
 
     await pool.query(
       `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_anterior, valor_nuevo)
        VALUES ($1, $2, 'foto_url', NULL, $3)`,
-      [id, req.usuario.id, req.file.path]
+      [id, req.usuario.id, resultado.secure_url]
     )
 
-    res.json({ foto_url: req.file.path })
+    res.json({ foto_url: resultado.secure_url })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Error al subir imagen' })
