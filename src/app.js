@@ -80,4 +80,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' })
 })
 
+const bsaleRoutes = require('./routes/bsale.routes')
+app.use('/api/bsale', bsaleRoutes)
+
 module.exports = app

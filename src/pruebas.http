@@ -85,3 +85,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlI
   "password_actual": "password123",
   "password_nuevo": "nueva_clave_segura"
 }
+
+### Buscar clientes en Bsale
+GET http://localhost:3000/api/bsale/clientes?q=rodrigo
+Authorization: Bearer TOKEN
