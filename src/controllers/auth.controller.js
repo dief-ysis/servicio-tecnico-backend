@@ -2,6 +2,15 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const pool = require('../db/connection')
 
+// Opciones del cookie de sesión
+// SameSite=None es necesario porque frontend (Vercel) y backend (Render) son dominios distintos
+const cookieOpts = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 8 * 60 * 60 * 1000 // 8 horas en ms
+}
+
 const registrarLog = async (email, ip, exitoso, detalle) => {
   try {
     await pool.query(
@@ -16,10 +25,6 @@ const registrarLog = async (email, ip, exitoso, detalle) => {
 const login = async (req, res) => {
   const { email, password } = req.body
   const ip = req.ip || req.headers['x-forwarded-for'] || 'desconocida'
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email y contraseña requeridos' })
-  }
 
   try {
     const result = await pool.query(
@@ -49,6 +54,8 @@ const login = async (req, res) => {
 
     await registrarLog(email, ip, true, 'Login exitoso')
 
+    // Enviar token en cookie httpOnly (más seguro) y también en body (compatibilidad)
+    res.cookie('token', token, cookieOpts)
     res.json({
       token,
       usuario: {
@@ -68,4 +75,9 @@ const me = async (req, res) => {
   res.json({ usuario: req.usuario })
 }
 
-module.exports = { login, me }
+const logout = (req, res) => {
+  res.clearCookie('token', { ...cookieOpts, maxAge: 0 })
+  res.json({ mensaje: 'Sesión cerrada' })
+}
+
+module.exports = { login, me, logout }

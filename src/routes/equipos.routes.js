@@ -3,6 +3,8 @@ const { upload, subirACloudinary } = require('../middlewares/upload.middleware')
 const router = require('express').Router()
 const { listar, obtener, crear, actualizar, cambiarEstado, historial } = require('../controllers/equipos.controller')
 const { verificarToken, requireRol } = require('../middlewares/auth.middleware')
+const { validate } = require('../middlewares/validate.middleware')
+const { crearEquipoSchema, actualizarEquipoSchema, cambiarEstadoSchema } = require('../schemas')
 
 router.use(verificarToken)
 
@@ -19,7 +21,7 @@ router.use(verificarToken)
  *           type: string
  *           enum: [semana, mes, año]
  */
-router.get('/estadisticas', verificarToken, async (req, res) => {
+router.get('/estadisticas', async (req, res) => {
   const { periodo = 'mes' } = req.query
   const intervalos = { semana: 7, mes: 30, año: 365 }
   const dias = intervalos[periodo] ?? 30
@@ -65,7 +67,21 @@ router.get('/estadisticas', verificarToken, async (req, res) => {
   }
 })
 
-router.get('/sin-movimiento', verificarToken, async (req, res) => {
+/**
+ * @swagger
+ * /equipos/sin-movimiento:
+ *   get:
+ *     summary: Equipos sin movimiento en N días
+ *     tags: [Equipos]
+ *     parameters:
+ *       - in: query
+ *         name: dias
+ *         schema: { type: integer, default: 7 }
+ *     responses:
+ *       200:
+ *         description: Lista de equipos sin cambio de estado en el período
+ */
+router.get('/sin-movimiento', async (req, res) => {
   const dias = parseInt(req.query.dias ?? 7)
   try {
     const result = await pool.query(
@@ -121,8 +137,8 @@ router.get('/sin-movimiento', verificarToken, async (req, res) => {
 router.get('/', listar)
 router.get('/:id', obtener)
 router.get('/:id/historial', historial)
-router.post('/', requireRol('recepcionista', 'tecnico'), crear)
-router.patch('/:id', requireRol('tecnico'), actualizar)
+router.post('/', requireRol('recepcionista', 'tecnico'), validate(crearEquipoSchema), crear)
+router.patch('/:id', requireRol('tecnico'), validate(actualizarEquipoSchema), actualizar)
 
 /**
  * @swagger
@@ -152,9 +168,9 @@ router.patch('/:id', requireRol('tecnico'), actualizar)
  *       400:
  *         description: Estado inválido
  */
-router.patch('/:id/estado', requireRol('tecnico'), cambiarEstado)
+router.patch('/:id/estado', requireRol('tecnico'), validate(cambiarEstadoSchema), cambiarEstado)
 
-router.post('/:id/foto', verificarToken, requireRol('tecnico', 'recepcionista'), upload.single('foto'), async (req, res) => {
+router.post('/:id/foto', requireRol('tecnico', 'recepcionista'), upload.single('foto'), async (req, res) => {
   const { id } = req.params
   try {
     if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' })

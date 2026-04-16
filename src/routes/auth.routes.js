@@ -1,6 +1,8 @@
 const router = require('express').Router()
-const { login, me } = require('../controllers/auth.controller')
+const { login, me, logout } = require('../controllers/auth.controller')
 const { verificarToken, requireRol } = require('../middlewares/auth.middleware')
+const { validate } = require('../middlewares/validate.middleware')
+const { loginSchema } = require('../schemas')
 const pool = require('../db/connection')
 
 /**
@@ -20,17 +22,17 @@ const pool = require('../db/connection')
  *             properties:
  *               email:
  *                 type: string
- *                 example: admin@taller.com
+ *                 example: usuario@empresa.cl
  *               password:
  *                 type: string
- *                 example: password123
+ *                 example: "tu_contraseña"
  *     responses:
  *       200:
  *         description: Login exitoso, retorna JWT
  *       401:
  *         description: Credenciales inválidas
  */
-router.post('/login', login)
+router.post('/login', validate(loginSchema), login)
 
 /**
  * @swagger
@@ -45,6 +47,18 @@ router.post('/login', login)
  *         description: Token inválido o expirado
  */
 router.get('/me', verificarToken, me)
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Cerrar sesión (invalida cookie)
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Sesión cerrada
+ */
+router.post('/logout', verificarToken, logout)
 
 router.get('/logs', verificarToken, requireRol('tecnico'), async (req, res) => {
   try {

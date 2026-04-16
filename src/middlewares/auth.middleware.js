@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken')
 
 const verificarToken = (req, res, next) => {
+  // Acepta token desde cookie httpOnly (preferido) o Authorization header (legacy)
   const authHeader = req.headers['authorization']
-  const token = authHeader && authHeader.split(' ')[1]
+  const token = req.cookies?.token ?? (authHeader && authHeader.split(' ')[1])
 
   if (!token) {
     return res.status(401).json({ error: 'Token requerido' })

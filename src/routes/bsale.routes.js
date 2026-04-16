@@ -35,16 +35,22 @@ router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res
   try {
     const doc = await crearDocumento({ clienteBsaleId, monto, descripcion })
 
-    await pool.query(
-      `UPDATE equipos SET observaciones = COALESCE(observaciones || E'\n', '') || $1 WHERE id = $2`,
-      [`Documento Bsale generado: N°${doc.number} - $${monto.toLocaleString('es-CL')}`, equipoId]
-    )
-
+    // Registrar en historial (siempre)
     await pool.query(
       `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_anterior, valor_nuevo)
        VALUES ($1, $2, 'documento_bsale', NULL, $3)`,
       [equipoId, req.usuario.id, `N°${doc.number}`]
     )
+
+    // Guardar ID y URL del documento (requiere migración 003 — falla silenciosamente si no se ejecutó)
+    try {
+      await pool.query(
+        `UPDATE equipos SET bsale_documento_id = $1, bsale_documento_url = $2 WHERE id = $3`,
+        [doc.number ?? doc.id, doc.urlPdf ?? null, equipoId]
+      )
+    } catch (trackingErr) {
+      console.warn('[bsale] columnas de tracking no encontradas — ejecuta migración 003:', trackingErr.message)
+    }
 
     res.json({
       numero: doc.number,

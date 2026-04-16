@@ -2,18 +2,36 @@ const pool = require('../db/connection')
 
 const listar = async (req, res) => {
   const { buscar } = req.query
+  const limite = Math.min(parseInt(req.query.limite) || 50, 200)
+  const pagina = Math.max(parseInt(req.query.pagina) || 1, 1)
+  const offset = (pagina - 1) * limite
+
   try {
-    let query = 'SELECT * FROM clientes WHERE activo = TRUE'
+    let conditions = ['activo = TRUE']
     let params = []
 
     if (buscar) {
-      query += ' AND (nombre ILIKE $1 OR telefono ILIKE $1)'
-      params = [`%${buscar}%`]
+      conditions.push('(nombre ILIKE $1 OR telefono ILIKE $1)')
+      params.push(`%${buscar}%`)
     }
 
-    query += ' ORDER BY creado_en DESC'
-    const result = await pool.query(query, params)
-    res.json(result.rows)
+    const where = 'WHERE ' + conditions.join(' AND ')
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT * FROM clientes ${where} ORDER BY creado_en DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limite, offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM clientes ${where}`, params)
+    ])
+
+    res.json({
+      data: dataResult.rows,
+      total: parseInt(countResult.rows[0].count),
+      pagina,
+      limite,
+      paginas: Math.ceil(parseInt(countResult.rows[0].count) / limite)
+    })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Error interno del servidor' })

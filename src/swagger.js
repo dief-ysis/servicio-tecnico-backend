@@ -10,10 +10,8 @@ const options = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production'
-          ? 'https://servicio-tecnico-backend-2o5r.onrender.com/api'
-          : 'http://localhost:3000/api',
-        description: process.env.NODE_ENV === 'production' ? 'Producción' : 'Local'
+        url: 'http://localhost:3000/api/v1',
+        description: 'Local (v1)'
       }
     ],
     components: {

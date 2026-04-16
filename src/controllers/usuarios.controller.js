@@ -78,6 +78,11 @@ const cambiarPassword = async (req, res) => {
   const { id } = req.params
   const { password_actual, password_nuevo } = req.body
 
+  // Solo puedes cambiar tu propia contraseña
+  if (parseInt(id) !== req.usuario.id) {
+    return res.status(403).json({ error: 'Solo puedes cambiar tu propia contraseña' })
+  }
+
   if (!password_actual || !password_nuevo) {
     return res.status(400).json({ error: 'password_actual y password_nuevo son requeridos' })
   }
