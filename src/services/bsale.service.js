@@ -16,25 +16,23 @@ const getNombreCliente = (c) => {
   return persona || c.company || c.name || `Cliente BSale ${c.id}`
 }
 
-// Buscar clientes por texto (nombre o empresa)
+// Buscar clientes por texto (nombre, empresa o RUT)
 const buscarClientes = async (query) => {
-  // BSale busca por firstName/lastName con 'name', y por empresa con 'company'
-  // Hacemos dos búsquedas en paralelo y combinamos resultados únicos
-  const [porNombre, porEmpresa] = await Promise.all([
-    bsale.get('/clients.json', {
-      params: { name: query, limit: 8, state: 0 }
-    }).then(r => r.data.items ?? []).catch(() => []),
-    bsale.get('/clients.json', {
-      params: { company: query, limit: 8, state: 0 }
-    }).then(r => r.data.items ?? []).catch(() => [])
-  ])
+  // BSale usa el parámetro 'name' para buscar por firstName/lastName/company
+  // El parámetro 'company' no filtra correctamente y devuelve todos los clientes
+  const res = await bsale.get('/clients.json', {
+    params: { name: query, limit: 50, state: 0 }
+  })
+  const items = res.data.items ?? []
 
-  // Combinar y deduplicar por id
-  const mapa = new Map()
-  for (const c of [...porNombre, ...porEmpresa]) {
-    if (!mapa.has(c.id)) mapa.set(c.id, c)
-  }
-  return Array.from(mapa.values()).slice(0, 10)
+  // Filtro client-side para garantizar que los resultados coincidan con la búsqueda
+  const q = query.toLowerCase().replace(/[\s\-\.]/g, '')
+  return items.filter(c => {
+    const nombre = getNombreCliente(c).toLowerCase()
+    const rut    = (c.code  ?? '').toLowerCase().replace(/[\s\-\.]/g, '')
+    const email  = (c.email ?? '').toLowerCase()
+    return nombre.includes(query.toLowerCase()) || rut.includes(q) || email.includes(query.toLowerCase())
+  }).slice(0, 15)
 }
 
 // Buscar clientes por RUT

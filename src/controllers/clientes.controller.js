@@ -117,7 +117,7 @@ const upsertBsale = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO clientes (nombre, telefono, email, bsale_id)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (bsale_id) DO UPDATE
+       ON CONFLICT (bsale_id) WHERE bsale_id IS NOT NULL DO UPDATE
          SET nombre   = EXCLUDED.nombre,
              telefono = COALESCE(EXCLUDED.telefono, clientes.telefono),
              email    = COALESCE(EXCLUDED.email,    clientes.email)
