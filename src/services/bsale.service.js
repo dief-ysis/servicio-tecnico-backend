@@ -62,6 +62,24 @@ const obtenerCliente = async (id) => {
 }
 
 const crearDocumento = async ({ clienteBsaleId, monto, descripcion, documentTypeId, officeId, priceListId }) => {
+  // Obtener datos completos del cliente desde BSale — la API exige nombre, no solo id
+  const clienteBsale = await obtenerCliente(clienteBsaleId).catch(() => null)
+
+  // Construir objeto client con todos los campos disponibles
+  const clienteBody = { id: clienteBsaleId }
+  if (clienteBsale) {
+    if (clienteBsale.firstName) clienteBody.firstName = clienteBsale.firstName
+    if (clienteBsale.lastName)  clienteBody.lastName  = clienteBsale.lastName
+    if (clienteBsale.company)   clienteBody.company   = clienteBsale.company
+    if (clienteBsale.code)      clienteBody.code      = clienteBsale.code
+    if (clienteBsale.email)     clienteBody.email     = clienteBsale.email
+    if (clienteBsale.phone)     clienteBody.phone     = clienteBsale.phone
+    // Si no tiene ni nombre ni empresa, poner algo para no romper BSale
+    if (!clienteBsale.firstName && !clienteBsale.lastName && !clienteBsale.company) {
+      clienteBody.company = clienteBsale.name ?? `Cliente ${clienteBsaleId}`
+    }
+  }
+
   const body = {
     documentTypeId: documentTypeId  ?? parseInt(process.env.BSALE_DOCUMENT_TYPE_ID ?? '0'),
     officeId:       officeId        ?? parseInt(process.env.BSALE_OFFICE_ID        ?? '0'),
@@ -69,8 +87,7 @@ const crearDocumento = async ({ clienteBsaleId, monto, descripcion, documentType
     emissionDate:   Math.floor(Date.now() / 1000),
     expirationDate: Math.floor(Date.now() / 1000),
     declare: 1,
-    // BSale espera el cliente en un objeto 'client', no como 'clientId' directo
-    client: { id: clienteBsaleId },
+    client: clienteBody,
     details: [
       {
         quantity: 1,
@@ -88,7 +105,6 @@ const crearDocumento = async ({ clienteBsaleId, monto, descripcion, documentType
     const res = await bsale.post('/documents.json', body)
     return res.data
   } catch (err) {
-    // Log completo del error BSale para diagnóstico
     console.error('[bsale] error al crear documento:',
       JSON.stringify(err.response?.data ?? err.message))
     throw err
