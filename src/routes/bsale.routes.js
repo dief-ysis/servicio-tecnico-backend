@@ -122,24 +122,43 @@ router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res
   try {
     const doc = await crearDocumento({ clienteBsaleId, monto, descripcion, documentTypeId, officeId, priceListId })
 
+    // Log completo para diagnóstico — ver qué campos devuelve BSale
+    console.log('[bsale] documento creado:', JSON.stringify({
+      id: doc.id, number: doc.number, urlPdf: doc.urlPdf,
+      urlTimbre: doc.urlTimbre, href: doc.href
+    }))
+
+    // BSale a veces devuelve la URL en urlPdf, a veces hay que construirla
+    const docId     = doc.id     ?? doc.number
+    const docNumber = doc.number ?? doc.id
+    const urlPdf    = doc.urlPdf
+      ?? doc.urlTimbre
+      ?? (docId ? `https://api.bsale.cl/v1/documents/${docId}/pdf.json` : null)
+
+    // URL para abrir el documento en la interfaz web de BSale
+    const urlWeb = docId
+      ? `https://app.bsale.cl/view/index.html?id=${docId}&type=document`
+      : null
+
     await pool.query(
       `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_anterior, valor_nuevo)
        VALUES ($1, $2, 'documento_bsale', NULL, $3)`,
-      [equipoId, req.usuario.id, `N°${doc.number}`]
+      [equipoId, req.usuario.id, `N°${docNumber}`]
     )
 
     try {
       await pool.query(
         `UPDATE equipos SET bsale_documento_id = $1, bsale_documento_url = $2 WHERE id = $3`,
-        [doc.number ?? doc.id, doc.urlPdf ?? null, equipoId]
+        [docNumber, urlPdf ?? urlWeb, equipoId]
       )
     } catch (trackingErr) {
       console.warn('[bsale] columnas de tracking no encontradas:', trackingErr.message)
     }
 
     res.json({
-      numero: doc.number,
-      urlPdf: doc.urlPdf,
+      numero: docNumber,
+      urlPdf,
+      urlWeb,
       total: monto
     })
   } catch (err) {
