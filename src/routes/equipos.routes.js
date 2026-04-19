@@ -104,6 +104,96 @@ router.get('/sin-movimiento', async (req, res) => {
   }
 })
 
+// Endpoint consolidado de alertas para el dashboard
+router.get('/alertas', async (req, res) => {
+  try {
+    const [
+      conteoResult,
+      sinMovimientoResult,
+      esperaRepuestoResult,
+      garantiasResult,
+      listosResult
+    ] = await Promise.all([
+      // Conteo por estado (todos los activos)
+      pool.query(`
+        SELECT estado_actual, COUNT(*) AS total
+        FROM equipos
+        WHERE estado_actual NOT IN ('entregado', 'irreparable')
+        GROUP BY estado_actual
+      `),
+      // Sin movimiento > 7 días en estados activos
+      pool.query(`
+        SELECT e.id, e.numero_ingreso, e.tipo_equipo, e.marca, e.modelo,
+               e.estado_actual, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+               MAX(h.fecha_cambio) AS ultimo_cambio
+        FROM equipos e
+        JOIN clientes c ON e.cliente_id = c.id
+        LEFT JOIN historial_cambios h ON h.equipo_id = e.id
+        WHERE e.estado_actual IN ('por_reparar', 'en_reparacion')
+        GROUP BY e.id, c.nombre, c.telefono
+        HAVING MAX(h.fecha_cambio) < NOW() - INTERVAL '7 days' OR MAX(h.fecha_cambio) IS NULL
+        ORDER BY ultimo_cambio ASC NULLS FIRST
+        LIMIT 20
+      `),
+      // Espera repuesto > 14 días
+      pool.query(`
+        SELECT e.id, e.numero_ingreso, e.tipo_equipo, e.marca, e.modelo,
+               e.estado_actual, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+               MAX(h.fecha_cambio) AS ultimo_cambio
+        FROM equipos e
+        JOIN clientes c ON e.cliente_id = c.id
+        LEFT JOIN historial_cambios h ON h.equipo_id = e.id
+        WHERE e.estado_actual = 'espera_repuesto'
+        GROUP BY e.id, c.nombre, c.telefono
+        HAVING MAX(h.fecha_cambio) < NOW() - INTERVAL '14 days' OR MAX(h.fecha_cambio) IS NULL
+        ORDER BY ultimo_cambio ASC NULLS FIRST
+        LIMIT 20
+      `),
+      // Garantías que vencen en los próximos 7 días
+      pool.query(`
+        SELECT e.id, e.numero_ingreso, e.tipo_equipo, e.marca, e.modelo,
+               e.garantia_dias, e.fecha_entrega,
+               (e.fecha_entrega + (e.garantia_dias || ' days')::INTERVAL) AS garantia_hasta,
+               c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
+        FROM equipos e
+        JOIN clientes c ON e.cliente_id = c.id
+        WHERE e.estado_actual = 'entregado'
+          AND e.garantia_dias > 0
+          AND e.fecha_entrega IS NOT NULL
+          AND (e.fecha_entrega + (e.garantia_dias || ' days')::INTERVAL) BETWEEN NOW() AND NOW() + INTERVAL '7 days'
+        ORDER BY garantia_hasta ASC
+        LIMIT 20
+      `),
+      // Listos para entregar (estado reparado)
+      pool.query(`
+        SELECT e.id, e.numero_ingreso, e.tipo_equipo, e.marca, e.modelo,
+               e.costo_reparacion, e.fecha_ingreso,
+               c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
+        FROM equipos e
+        JOIN clientes c ON e.cliente_id = c.id
+        WHERE e.estado_actual = 'reparado'
+        ORDER BY e.fecha_ingreso ASC
+      `)
+    ])
+
+    const conteo = {}
+    for (const row of conteoResult.rows) {
+      conteo[row.estado_actual] = parseInt(row.total)
+    }
+
+    res.json({
+      conteo,
+      sin_movimiento:        sinMovimientoResult.rows,
+      espera_repuesto_critico: esperaRepuestoResult.rows,
+      garantias_por_vencer:  garantiasResult.rows,
+      listos:                listosResult.rows
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+})
+
 /**
  * @swagger
  * /equipos:
