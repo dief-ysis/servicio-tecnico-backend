@@ -142,8 +142,12 @@ router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res
       total: monto
     })
   } catch (err) {
-    console.error('Bsale error:', err.response?.data ?? err.message)
-    res.status(502).json({ error: 'Error al generar documento en Bsale' })
+    const detalle = err.response?.data ?? err.message
+    console.error('Bsale error:', JSON.stringify(detalle))
+    res.status(502).json({
+      error: 'Error al generar documento en Bsale',
+      detalle: typeof detalle === 'object' ? detalle : String(detalle)
+    })
   }
 })
 

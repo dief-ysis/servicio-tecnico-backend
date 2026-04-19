@@ -69,7 +69,8 @@ const crearDocumento = async ({ clienteBsaleId, monto, descripcion }) => {
     emissionDate:   Math.floor(Date.now() / 1000),
     expirationDate: Math.floor(Date.now() / 1000),
     declare: 1,
-    clientId: clienteBsaleId,
+    // BSale espera el cliente en un objeto 'client', no como 'clientId' directo
+    client: { id: clienteBsaleId },
     details: [
       {
         quantity: 1,
@@ -82,8 +83,16 @@ const crearDocumento = async ({ clienteBsaleId, monto, descripcion }) => {
     ],
     payments: []
   }
-  const res = await bsale.post('/documents.json', body)
-  return res.data
+  console.log('[bsale] crearDocumento body:', JSON.stringify(body))
+  try {
+    const res = await bsale.post('/documents.json', body)
+    return res.data
+  } catch (err) {
+    // Log completo del error BSale para diagnóstico
+    console.error('[bsale] error al crear documento:',
+      JSON.stringify(err.response?.data ?? err.message))
+    throw err
+  }
 }
 
 const obtenerTiposDocumento = async () => {
