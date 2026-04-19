@@ -34,14 +34,25 @@ router.get('/clientes', verificarToken, async (req, res) => {
   }
 })
 
-// Listar todos los clientes de BSale con paginación
+// Listar todos los clientes de BSale con paginación / búsqueda
 router.get('/clientes/lista', verificarToken, async (req, res) => {
   const limite = Math.min(parseInt(req.query.limite) || 25, 50)
   const offset  = Math.max(parseInt(req.query.offset) || 0, 0)
-  const buscar  = req.query.buscar ?? ''
+  const buscar  = (req.query.buscar ?? '').trim()
 
   try {
-    const { items, count } = await listarClientes(limite, offset, buscar)
+    let items, count
+
+    if (buscar) {
+      // Búsqueda activa: usar función dual (name + company) para encontrar personas y empresas
+      items = await buscarClientes(buscar)
+      count = items.length
+    } else {
+      // Listado sin filtro: paginación normal
+      const result = await listarClientes(limite, offset, '')
+      items = result.items
+      count = result.count
+    }
     // Enriquecer con nombre legible y equipos locales si los hay
     const bsaleIds = items.map(c => c.id).filter(Boolean)
 
