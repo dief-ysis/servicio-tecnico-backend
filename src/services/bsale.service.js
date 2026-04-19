@@ -125,6 +125,13 @@ const obtenerOficinas = async () => {
   return res.data.items ?? []
 }
 
+const obtenerListasPrecios = async () => {
+  const res = await bsale.get('/price_lists.json', {
+    params: { state: 0, limit: 20 }
+  })
+  return res.data.items ?? []
+}
+
 module.exports = {
   buscarClientes,
   buscarClientesPorRut,
@@ -133,5 +140,6 @@ module.exports = {
   getNombreCliente,
   crearDocumento,
   obtenerTiposDocumento,
-  obtenerOficinas
+  obtenerOficinas,
+  obtenerListasPrecios
 }

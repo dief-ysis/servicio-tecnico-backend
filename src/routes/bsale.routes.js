@@ -7,7 +7,8 @@ const {
   getNombreCliente,
   crearDocumento,
   obtenerTiposDocumento,
-  obtenerOficinas
+  obtenerOficinas,
+  obtenerListasPrecios
 } = require('../services/bsale.service')
 const pool = require('../db/connection')
 
@@ -151,14 +152,15 @@ router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res
   }
 })
 
-// Configuración de BSale (tipos de documento y oficinas)
+// Configuración de BSale (tipos de documento, oficinas y listas de precio)
 router.get('/config', verificarToken, requireRol('tecnico'), async (req, res) => {
   try {
-    const [tipos, oficinas] = await Promise.all([
+    const [tipos, oficinas, listas] = await Promise.all([
       obtenerTiposDocumento(),
-      obtenerOficinas()
+      obtenerOficinas(),
+      obtenerListasPrecios()
     ])
-    res.json({ tipos, oficinas })
+    res.json({ tipos, oficinas, listas })
   } catch (err) {
     res.status(502).json({ error: 'Error al obtener configuración de Bsale' })
   }
