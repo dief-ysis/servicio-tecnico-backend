@@ -105,7 +105,7 @@ router.get('/clientes/:bsale_id/equipos', verificarToken, async (req, res) => {
 
 // Generar documento en BSale
 router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res) => {
-  const { equipoId, clienteBsaleId, monto, descripcion } = req.body
+  const { equipoId, clienteBsaleId, monto, descripcion, documentTypeId, officeId, priceListId } = req.body
 
   if (!equipoId || !clienteBsaleId || !monto || !descripcion) {
     return res.status(400).json({
@@ -119,7 +119,7 @@ router.post('/documento', verificarToken, requireRol('tecnico'), async (req, res
   }
 
   try {
-    const doc = await crearDocumento({ clienteBsaleId, monto, descripcion })
+    const doc = await crearDocumento({ clienteBsaleId, monto, descripcion, documentTypeId, officeId, priceListId })
 
     await pool.query(
       `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_anterior, valor_nuevo)

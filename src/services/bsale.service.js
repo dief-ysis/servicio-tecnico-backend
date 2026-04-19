@@ -61,11 +61,11 @@ const obtenerCliente = async (id) => {
   return res.data
 }
 
-const crearDocumento = async ({ clienteBsaleId, monto, descripcion }) => {
+const crearDocumento = async ({ clienteBsaleId, monto, descripcion, documentTypeId, officeId, priceListId }) => {
   const body = {
-    documentTypeId: parseInt(process.env.BSALE_DOCUMENT_TYPE_ID ?? '1'),
-    officeId:       parseInt(process.env.BSALE_OFFICE_ID        ?? '1'),
-    priceListId:    parseInt(process.env.BSALE_PRICE_LIST_ID    ?? '1'),
+    documentTypeId: documentTypeId  ?? parseInt(process.env.BSALE_DOCUMENT_TYPE_ID ?? '0'),
+    officeId:       officeId        ?? parseInt(process.env.BSALE_OFFICE_ID        ?? '0'),
+    priceListId:    priceListId     ?? parseInt(process.env.BSALE_PRICE_LIST_ID    ?? '1'),
     emissionDate:   Math.floor(Date.now() / 1000),
     expirationDate: Math.floor(Date.now() / 1000),
     declare: 1,
