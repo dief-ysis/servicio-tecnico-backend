@@ -74,7 +74,7 @@ const listar = async (req, res) => {
 
     const [dataResult, countResult] = await Promise.all([
       pool.query(
-        `SELECT e.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
+        `SELECT e.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono, c.bsale_id AS cliente_bsale_id
          FROM equipos e
          JOIN clientes c ON e.cliente_id = c.id
          ${where}
@@ -105,7 +105,7 @@ const obtener = async (req, res) => {
   const { id } = req.params
   try {
     const result = await pool.query(
-      `SELECT e.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
+      `SELECT e.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono, c.bsale_id AS cliente_bsale_id
        FROM equipos e
        JOIN clientes c ON e.cliente_id = c.id
        WHERE e.id = $1`,

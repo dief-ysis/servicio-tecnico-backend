@@ -43,7 +43,7 @@ const actualizarEquipoSchema = z.object({
   observaciones:    z.string().max(2000).optional().nullable(),
   password_pin:     z.string().max(50).optional().nullable(),
   notas_tecnico:    z.string().max(2000).optional().nullable(),
-  costo_reparacion: z.coerce.number().nonnegative().optional().nullable(),
+  costo_reparacion: z.coerce.number().int('El costo debe ser un número entero').nonnegative().optional().nullable(),
   garantia_dias:    z.coerce.number().int().nonnegative().max(3650).optional().nullable()
 })
 

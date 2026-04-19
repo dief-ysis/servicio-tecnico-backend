@@ -6,31 +6,56 @@ const bsale = axios.create({
     'access_token': process.env.BSALE_TOKEN,
     'Content-Type': 'application/json'
   },
-  timeout: 8000
+  timeout: 10000
 })
 
+// Extrae el nombre legible de un cliente BSale
+// BSale tiene dos tipos: personas (firstName+lastName) y empresas (company)
+const getNombreCliente = (c) => {
+  const persona = [c.firstName, c.lastName].filter(Boolean).join(' ').trim()
+  return persona || c.company || c.name || `Cliente BSale ${c.id}`
+}
+
+// Buscar clientes por texto (nombre o empresa)
 const buscarClientes = async (query) => {
+  // BSale busca por firstName/lastName con 'name', y por empresa con 'company'
+  // Hacemos dos búsquedas en paralelo y combinamos resultados únicos
+  const [porNombre, porEmpresa] = await Promise.all([
+    bsale.get('/clients.json', {
+      params: { name: query, limit: 8, state: 0 }
+    }).then(r => r.data.items ?? []).catch(() => []),
+    bsale.get('/clients.json', {
+      params: { company: query, limit: 8, state: 0 }
+    }).then(r => r.data.items ?? []).catch(() => [])
+  ])
+
+  // Combinar y deduplicar por id
+  const mapa = new Map()
+  for (const c of [...porNombre, ...porEmpresa]) {
+    if (!mapa.has(c.id)) mapa.set(c.id, c)
+  }
+  return Array.from(mapa.values()).slice(0, 10)
+}
+
+// Buscar clientes por RUT
+const buscarClientesPorRut = async (rut) => {
   const res = await bsale.get('/clients.json', {
-    params: {
-      fields: 'id,firstName,lastName,email,phone,code,company',
-      name: query,
-      limit: 8,
-      state: 1
-    }
+    params: { code: rut, limit: 5, state: 0 }
   })
   return res.data.items ?? []
 }
 
-const buscarClientesPorRut = async (rut) => {
-  const res = await bsale.get('/clients.json', {
-    params: {
-      fields: 'id,firstName,lastName,email,phone,code,company',
-      code: rut,
-      limit: 5,
-      state: 1
-    }
-  })
-  return res.data.items ?? []
+// Listar todos los clientes de BSale con paginación
+const listarClientes = async (limit = 25, offset = 0, buscar = '') => {
+  const params = { limit, offset, state: 0 }
+  if (buscar) {
+    params.name = buscar
+  }
+  const res = await bsale.get('/clients.json', { params })
+  return {
+    items: res.data.items ?? [],
+    count: res.data.count ?? 0
+  }
 }
 
 const obtenerCliente = async (id) => {
@@ -50,6 +75,7 @@ const crearDocumento = async ({ clienteBsaleId, monto, descripcion }) => {
     details: [
       {
         quantity: 1,
+        // BSale trabaja con valores netos (sin IVA). El monto ingresado es el total con IVA.
         netUnitValue: Math.round(monto / 1.19),
         comment: descripcion,
         discount: 0,
@@ -79,7 +105,9 @@ const obtenerOficinas = async () => {
 module.exports = {
   buscarClientes,
   buscarClientesPorRut,
+  listarClientes,
   obtenerCliente,
+  getNombreCliente,
   crearDocumento,
   obtenerTiposDocumento,
   obtenerOficinas
