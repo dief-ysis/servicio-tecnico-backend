@@ -262,14 +262,26 @@ router.patch('/:id/estado', requireRol('tecnico'), validate(cambiarEstadoSchema)
 
 router.post('/:id/foto', requireRol('tecnico', 'recepcionista'), upload.single('foto'), async (req, res) => {
   const { id } = req.params
+  const etiqueta = req.body.etiqueta || req.query.etiqueta || 'general'
+  const etiquetasValidas = ['recepcion', 'reparacion', 'entrega', 'general']
+  const etiquetaFinal = etiquetasValidas.includes(etiqueta) ? etiqueta : 'general'
+
   try {
     if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' })
 
     const resultado = await subirACloudinary(req.file.buffer, req.file.mimetype)
 
+    // Actualizar foto_url en equipos (compatibilidad)
     await pool.query(
       'UPDATE equipos SET foto_url = $1 WHERE id = $2',
       [resultado.secure_url, id]
+    )
+
+    // Insertar en fotos_equipo
+    await pool.query(
+      `INSERT INTO fotos_equipo (equipo_id, url, etiqueta, usuario_id)
+       VALUES ($1, $2, $3, $4)`,
+      [id, resultado.secure_url, etiquetaFinal, req.usuario.id]
     )
 
     await pool.query(
@@ -278,10 +290,43 @@ router.post('/:id/foto', requireRol('tecnico', 'recepcionista'), upload.single('
       [id, req.usuario.id, resultado.secure_url]
     )
 
-    res.json({ foto_url: resultado.secure_url })
+    res.json({ foto_url: resultado.secure_url, etiqueta: etiquetaFinal })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Error al subir imagen' })
+  }
+})
+
+router.get('/:id/fotos', async (req, res) => {
+  const { id } = req.params
+  try {
+    const result = await pool.query(
+      `SELECT f.id, f.url, f.etiqueta, f.subida_en, u.nombre AS usuario_nombre
+       FROM fotos_equipo f
+       LEFT JOIN usuarios u ON f.usuario_id = u.id
+       WHERE f.equipo_id = $1
+       ORDER BY f.subida_en DESC`,
+      [id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error al obtener fotos' })
+  }
+})
+
+router.delete('/:id/fotos/:foto_id', requireRol('tecnico'), async (req, res) => {
+  const { id, foto_id } = req.params
+  try {
+    const result = await pool.query(
+      'DELETE FROM fotos_equipo WHERE id = $1 AND equipo_id = $2 RETURNING id',
+      [foto_id, id]
+    )
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Foto no encontrada' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error al eliminar foto' })
   }
 })
 

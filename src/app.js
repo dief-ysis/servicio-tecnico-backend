@@ -10,6 +10,7 @@ const clientesRoutes = require('./routes/clientes.routes')
 const equiposRoutes = require('./routes/equipos.routes')
 const usuariosRoutes = require('./routes/usuarios.routes')
 const bsaleRoutes = require('./routes/bsale.routes')
+const publicRoutes = require('./routes/public.routes')
 const swaggerUi = require('swagger-ui-express')
 const swaggerSpec = require('./swagger')
 
@@ -79,6 +80,9 @@ app.use('/api/v1/clientes', clientesRoutes)
 app.use('/api/v1/equipos', equiposRoutes)
 app.use('/api/v1/usuarios', usuariosRoutes)
 app.use('/api/v1/bsale', bsaleRoutes)
+
+// Rutas públicas (sin autenticación)
+app.use('/api/public', publicRoutes)
 
 // Alias sin versión para compatibilidad hacia atrás (deprecado)
 app.use('/api/auth', authRoutes)
