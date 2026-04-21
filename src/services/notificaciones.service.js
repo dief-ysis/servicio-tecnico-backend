@@ -66,4 +66,32 @@ const notificarIrreparable = async (equipo) => {
   }
 }
 
-module.exports = { notificarReparado, notificarIrreparable }
+/**
+ * Notifica cuando una garantía está por vencer (cron semanal).
+ * @param {object} equipo - Fila de equipos con cliente_nombre, cliente_telefono, etc.
+ * @param {number} diasRestantes - Días que faltan para que venza la garantía
+ */
+const notificarGarantia = async (equipo, diasRestantes) => {
+  if (!WEBHOOK_URL) return
+
+  try {
+    await axios.post(WEBHOOK_URL, {
+      evento:            'garantia_por_vencer',
+      equipo_id:         equipo.id,
+      numero_ingreso:    equipo.numero_ingreso,
+      tipo_equipo:       equipo.tipo_equipo,
+      marca:             equipo.marca,
+      modelo:            equipo.modelo,
+      cliente_nombre:    equipo.cliente_nombre,
+      cliente_telefono:  equipo.cliente_telefono,
+      garantia_hasta:    equipo.garantia_hasta,
+      dias_restantes:    diasRestantes,
+      estado:            equipo.estado_actual,
+      fecha:             new Date().toISOString()
+    }, { timeout: 5000 })
+  } catch (err) {
+    console.error('Webhook garantía falló:', err.message)
+  }
+}
+
+module.exports = { notificarReparado, notificarIrreparable, notificarGarantia }

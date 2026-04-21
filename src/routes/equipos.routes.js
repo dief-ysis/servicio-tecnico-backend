@@ -22,41 +22,84 @@ router.use(verificarToken)
  *           enum: [semana, mes, año]
  */
 router.get('/estadisticas', async (req, res) => {
-  const { periodo = 'mes' } = req.query
+  const { periodo = 'mes', usuario_id } = req.query
   const intervalos = { semana: 7, mes: 30, año: 365 }
   const dias = intervalos[periodo] ?? 30
 
+  // Si se filtra por técnico, hacemos join con historial_cambios
+  const usuarioFiltro = usuario_id ? parseInt(usuario_id) : null
+
   try {
-    const totales = await pool.query(
-      `SELECT estado_actual, COUNT(*) as total
-       FROM equipos
-       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
-       GROUP BY estado_actual`,
-      [dias]
-    )
+    let totales, porDia, costos
 
-    const porDia = await pool.query(
-      `SELECT DATE(fecha_ingreso) as fecha, COUNT(*) as ingresos
-       FROM equipos
-       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
-       GROUP BY DATE(fecha_ingreso)
-       ORDER BY fecha ASC`,
-      [dias]
-    )
+    if (usuarioFiltro) {
+      // Equipos cuyo historial tiene al menos un cambio del técnico seleccionado en el período
+      totales = await pool.query(
+        `SELECT e.estado_actual, COUNT(DISTINCT e.id) as total
+         FROM equipos e
+         JOIN historial_cambios h ON h.equipo_id = e.id
+         WHERE h.usuario_id = $2
+           AND e.fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+         GROUP BY e.estado_actual`,
+        [dias, usuarioFiltro]
+      )
 
-    const costos = await pool.query(
-      `SELECT 
-        COUNT(*) FILTER (WHERE costo_reparacion IS NOT NULL) as con_costo,
-        SUM(costo_reparacion) as total_facturado,
-        AVG(costo_reparacion) as promedio
-       FROM equipos
-       WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
-       AND estado_actual IN ('reparado', 'entregado')`,
-      [dias]
-    )
+      porDia = await pool.query(
+        `SELECT DATE(e.fecha_ingreso) as fecha, COUNT(DISTINCT e.id) as ingresos
+         FROM equipos e
+         JOIN historial_cambios h ON h.equipo_id = e.id
+         WHERE h.usuario_id = $2
+           AND e.fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+         GROUP BY DATE(e.fecha_ingreso)
+         ORDER BY fecha ASC`,
+        [dias, usuarioFiltro]
+      )
+
+      costos = await pool.query(
+        `SELECT
+          COUNT(DISTINCT e.id) FILTER (WHERE e.costo_reparacion IS NOT NULL) as con_costo,
+          SUM(DISTINCT e.costo_reparacion) as total_facturado,
+          AVG(e.costo_reparacion) as promedio
+         FROM equipos e
+         JOIN historial_cambios h ON h.equipo_id = e.id
+         WHERE h.usuario_id = $2
+           AND e.fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+           AND e.estado_actual IN ('reparado', 'entregado')`,
+        [dias, usuarioFiltro]
+      )
+    } else {
+      totales = await pool.query(
+        `SELECT estado_actual, COUNT(*) as total
+         FROM equipos
+         WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+         GROUP BY estado_actual`,
+        [dias]
+      )
+
+      porDia = await pool.query(
+        `SELECT DATE(fecha_ingreso) as fecha, COUNT(*) as ingresos
+         FROM equipos
+         WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+         GROUP BY DATE(fecha_ingreso)
+         ORDER BY fecha ASC`,
+        [dias]
+      )
+
+      costos = await pool.query(
+        `SELECT
+          COUNT(*) FILTER (WHERE costo_reparacion IS NOT NULL) as con_costo,
+          SUM(costo_reparacion) as total_facturado,
+          AVG(costo_reparacion) as promedio
+         FROM equipos
+         WHERE fecha_ingreso >= NOW() - ($1 || ' days')::INTERVAL
+         AND estado_actual IN ('reparado', 'entregado')`,
+        [dias]
+      )
+    }
 
     res.json({
       periodo,
+      usuario_id: usuarioFiltro,
       totales: totales.rows,
       porDia: porDia.rows,
       costos: costos.rows[0]
