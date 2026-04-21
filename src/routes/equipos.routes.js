@@ -330,4 +330,64 @@ router.delete('/:id/fotos/:foto_id', requireRol('tecnico'), async (req, res) => 
   }
 })
 
+// POST /equipos/:id/presupuesto — enviar presupuesto al cliente
+router.post('/:id/presupuesto', requireRol('tecnico'), async (req, res) => {
+  const { monto, notas } = req.body
+  if (!monto || monto <= 0) return res.status(400).json({ error: 'Monto requerido' })
+  try {
+    const r = await pool.query(
+      `UPDATE equipos SET presupuesto_monto=$1, presupuesto_enviado_en=NOW(),
+       presupuesto_aprobado=NULL, presupuesto_aprobado_en=NULL, presupuesto_notas=$2
+       WHERE id=$3 RETURNING *`,
+      [monto, notas || null, req.params.id]
+    )
+    if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' })
+    // Registrar en historial
+    await pool.query(
+      `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_nuevo)
+       VALUES ($1,$2,'presupuesto_enviado',$3)`,
+      [req.params.id, req.usuario.id, `$${Number(monto).toLocaleString('es-CL')}`]
+    )
+    res.json(r.rows[0])
+  } catch(err) { console.error(err); res.status(500).json({ error: 'Error interno' }) }
+})
+
+// PATCH /equipos/:id/presupuesto — aprobar o rechazar
+router.patch('/:id/presupuesto', requireRol('tecnico'), async (req, res) => {
+  const { aprobado, notas } = req.body // aprobado: true | false
+  if (aprobado === undefined) return res.status(400).json({ error: 'Campo aprobado requerido' })
+  try {
+    const r = await pool.query(
+      `UPDATE equipos SET presupuesto_aprobado=$1, presupuesto_aprobado_en=NOW(),
+       presupuesto_notas=COALESCE($2, presupuesto_notas)
+       WHERE id=$3 RETURNING *`,
+      [aprobado, notas || null, req.params.id]
+    )
+    if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' })
+    await pool.query(
+      `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_nuevo)
+       VALUES ($1,$2,'presupuesto_respuesta',$3)`,
+      [req.params.id, req.usuario.id, aprobado ? 'aprobado' : 'rechazado']
+    )
+    res.json(r.rows[0])
+  } catch(err) { console.error(err); res.status(500).json({ error: 'Error interno' }) }
+})
+
+// POST /equipos/:id/firma — guarda firma digital (base64 → Cloudinary)
+router.post('/:id/firma', requireRol('recepcionista', 'tecnico'), async (req, res) => {
+  const { firma_base64 } = req.body
+  if (!firma_base64) return res.status(400).json({ error: 'Firma requerida' })
+  try {
+    const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64')
+    const result = await subirACloudinary(buffer, 'image/png')
+    await pool.query('UPDATE equipos SET firma_url=$1 WHERE id=$2', [result.secure_url, req.params.id])
+    await pool.query(
+      `INSERT INTO historial_cambios (equipo_id, usuario_id, campo_modificado, valor_nuevo)
+       VALUES ($1,$2,'firma_digital','capturada')`,
+      [req.params.id, req.usuario.id]
+    )
+    res.json({ firma_url: result.secure_url })
+  } catch(err) { console.error(err); res.status(500).json({ error: 'Error al guardar firma' }) }
+})
+
 module.exports = router

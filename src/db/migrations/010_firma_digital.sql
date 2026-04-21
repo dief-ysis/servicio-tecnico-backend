@@ -1,0 +1,1 @@
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS firma_url TEXT;
